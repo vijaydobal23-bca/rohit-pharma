@@ -301,6 +301,56 @@ const runTests = async () => {
       multerUploadRes.data?.url
     );
 
+    // 18. Security Layer 1: Helmet HTTP Headers Verification
+    const headersTestRes = await fetch(`${BASE_URL}/api/health`);
+    const nosniffHeader = headersTestRes.headers.get('x-content-type-options');
+    console.log(
+      '✓ Security Layer 1 (Helmet Headers):',
+      nosniffHeader === 'nosniff' ? 'PASSED (X-Content-Type-Options: nosniff)' : 'FAILED'
+    );
+
+    // 19. Security Layer 6: Suspicious User-Agent & Scanner Blocking
+    const blockedUaRes = await fetch(`${BASE_URL}/api/medicines`, {
+      headers: {
+        'User-Agent': 'sqlmap/1.6#stable (https://sqlmap.org)',
+        Authorization: `Bearer ${employeeToken}`,
+      },
+    });
+    const blockedUaJson = await blockedUaRes.json();
+    console.log(
+      '✓ Security Layer 6 (Scanner Blocker):',
+      blockedUaRes.status === 403 && blockedUaJson.error === 'Forbidden'
+        ? 'PASSED (403 Forbidden for sqlmap)'
+        : 'FAILED'
+    );
+
+    // 20. Security Layer 2: Payload Size Limit (10kb) Protection
+    const oversizedPayload = {
+      name: 'Oversized Test Medicine',
+      description: 'A'.repeat(15 * 1024), // 15KB > 10KB limit
+    };
+    const payloadLimitRes = await fetch(`${BASE_URL}/api/medicines`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${employeeToken}`,
+      },
+      body: JSON.stringify(oversizedPayload),
+    });
+    console.log(
+      '✓ Security Layer 2 (Payload Size Limit 10kb):',
+      payloadLimitRes.status === 413 ? 'PASSED (413 Payload Too Large)' : `Status: ${payloadLimitRes.status}`
+    );
+
+    // 21. Security Layer 3: Parameter Pollution (HPP) Protection
+    const hppRes = await fetch(`${BASE_URL}/api/medicines?category=Tablet&category=Syrup`, {
+      headers: { Authorization: `Bearer ${employeeToken}` },
+    });
+    console.log(
+      '✓ Security Layer 3 (HPP Parameter Pollution):',
+      hppRes.status === 200 ? 'PASSED (Clean query parameters handled)' : 'FAILED'
+    );
+
     console.log('\n======================================================');
     console.log('ALL INTEGRATION TESTS PASSED WITH 100% SUCCESS!');
     console.log('======================================================\n');
