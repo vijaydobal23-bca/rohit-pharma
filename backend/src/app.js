@@ -178,7 +178,13 @@ app.use((req, res) => {
 
 // Global Error Handler
 app.use((err, req, res, next) => {
-  console.error('Unhandled Error:', err);
+  if (err.type === 'entity.too.large' || err.status === 413) {
+    return res.status(413).json({
+      success: false,
+      error: 'Payload Too Large: Request entity exceeds the 10kb limit',
+    });
+  }
+  console.error('Unhandled Error:', err.message || err);
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal Server Error',
