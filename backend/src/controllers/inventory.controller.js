@@ -2,6 +2,7 @@ const InventoryBatch = require('../models/inventoryBatch.model');
 const Medicine = require('../models/medicine.model');
 const StockMovement = require('../models/stockMovement.model');
 const inventoryService = require('../services/inventory.service');
+const { delCachePattern } = require('../config/redis');
 
 /**
  * Get all inventory batches with filters
@@ -163,6 +164,12 @@ const addStockBatch = async (req, res) => {
       performedByName: req.user?.name || 'Staff',
     });
 
+    // Invalidate related caches
+    delCachePattern('batches:*').catch(() => {});
+    delCachePattern('alerts:*').catch(() => {});
+    delCachePattern('meds:*').catch(() => {});
+    delCachePattern('dash:*').catch(() => {});
+
     return res.status(201).json({
       success: true,
       message: `Batch added successfully (Expires in ${daysUntilExpiry} days on ${targetExpiry.toLocaleDateString()})`,
@@ -202,6 +209,12 @@ const updateBatch = async (req, res) => {
     if (!batch) {
       return res.status(404).json({ success: false, message: 'Batch not found' });
     }
+
+    delCachePattern('batches:*').catch(() => {});
+    delCachePattern('alerts:*').catch(() => {});
+    delCachePattern('meds:*').catch(() => {});
+    delCachePattern('dash:*').catch(() => {});
+
     return res.status(200).json({
       success: true,
       message: 'Batch updated successfully',
@@ -234,6 +247,11 @@ const adjustStock = async (req, res) => {
       performedBy: req.user?._id || req.user?.id,
       performedByName: req.user?.name || 'Staff',
     });
+
+    delCachePattern('batches:*').catch(() => {});
+    delCachePattern('alerts:*').catch(() => {});
+    delCachePattern('meds:*').catch(() => {});
+    delCachePattern('dash:*').catch(() => {});
 
     return res.status(200).json({
       success: true,

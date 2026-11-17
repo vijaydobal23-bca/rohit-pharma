@@ -1,8 +1,9 @@
 const Category = require('../models/category.model');
+const { delCachePattern } = require('../config/redis');
 
 const getAllCategories = async (req, res) => {
   try {
-    const categories = await Category.find().sort({ name: 1 });
+    const categories = await Category.find().sort({ name: 1 }).lean();
     return res.status(200).json({
       success: true,
       data: categories,
@@ -32,6 +33,9 @@ const createCategory = async (req, res) => {
       description: description?.trim() || '',
     });
 
+    delCachePattern('cats:*').catch(() => {});
+    delCachePattern('meds:*').catch(() => {});
+
     return res.status(201).json({
       success: true,
       message: 'Category created successfully',
@@ -52,6 +56,10 @@ const updateCategory = async (req, res) => {
     if (!category) {
       return res.status(404).json({ success: false, message: 'Category not found' });
     }
+
+    delCachePattern('cats:*').catch(() => {});
+    delCachePattern('meds:*').catch(() => {});
+
     return res.status(200).json({
       success: true,
       message: 'Category updated',
@@ -66,6 +74,10 @@ const deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
     await Category.findByIdAndDelete(id);
+
+    delCachePattern('cats:*').catch(() => {});
+    delCachePattern('meds:*').catch(() => {});
+
     return res.status(200).json({ success: true, message: 'Category deleted' });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -78,4 +90,3 @@ module.exports = {
   updateCategory,
   deleteCategory,
 };
-

@@ -1,5 +1,6 @@
 const Sale = require('../models/sale.model');
 const billingService = require('../services/billing.service');
+const { delCachePattern } = require('../config/redis');
 
 /**
  * Create a new bill / POS transaction
@@ -16,6 +17,13 @@ const createBill = async (req, res) => {
       notes,
       user: req.user,
     });
+
+    // Invalidate sales, dashboard, inventory & medicines caches
+    delCachePattern('sales:*').catch(() => {});
+    delCachePattern('dash:*').catch(() => {});
+    delCachePattern('batches:*').catch(() => {});
+    delCachePattern('meds:*').catch(() => {});
+    delCachePattern('alerts:*').catch(() => {});
 
     return res.status(201).json({
       success: true,
@@ -148,6 +156,12 @@ const cancelBill = async (req, res) => {
 
     const cancelledSale = await billingService.cancelBill(id, reason, req.user);
 
+    delCachePattern('sales:*').catch(() => {});
+    delCachePattern('dash:*').catch(() => {});
+    delCachePattern('batches:*').catch(() => {});
+    delCachePattern('meds:*').catch(() => {});
+    delCachePattern('alerts:*').catch(() => {});
+
     return res.status(200).json({
       success: true,
       message: 'Bill cancelled and stock restored successfully',
@@ -178,6 +192,12 @@ const processReturn = async (req, res) => {
     }
 
     const result = await billingService.processReturn(id, returnedItems, reason, req.user);
+
+    delCachePattern('sales:*').catch(() => {});
+    delCachePattern('dash:*').catch(() => {});
+    delCachePattern('batches:*').catch(() => {});
+    delCachePattern('meds:*').catch(() => {});
+    delCachePattern('alerts:*').catch(() => {});
 
     return res.status(200).json({
       success: true,

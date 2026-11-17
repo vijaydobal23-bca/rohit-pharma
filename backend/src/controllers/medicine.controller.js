@@ -3,6 +3,7 @@ const InventoryBatch = require('../models/inventoryBatch.model');
 const StockMovement = require('../models/stockMovement.model');
 const Category = require('../models/category.model');
 const { uploadImage } = require('../services/imagekit.service');
+const { delCachePattern } = require('../config/redis');
 
 /**
  * Get all medicines with search, category/manufacturer filter, and live stock calculation
@@ -45,7 +46,8 @@ const getAllMedicines = async (req, res) => {
     const medicines = await Medicine.find(query)
       .sort({ name: 1 })
       .skip(skip)
-      .limit(Number(limit));
+      .limit(Number(limit))
+      .lean();
 
     // Calculate live aggregated stock from active unexpired batches for each medicine
     const now = new Date();
@@ -278,6 +280,11 @@ const createMedicine = async (req, res) => {
       }
     }
 
+    // Invalidate Redis caches asynchronously
+    delCachePattern('meds:*').catch(() => {});
+    delCachePattern('dash:*').catch(() => {});
+    delCachePattern('alerts:*').catch(() => {});
+
     return res.status(201).json({
       success: true,
       message: initialBatchCreated
@@ -325,6 +332,11 @@ const updateMedicine = async (req, res) => {
       });
     }
 
+    // Invalidate Redis caches asynchronously
+    delCachePattern('meds:*').catch(() => {});
+    delCachePattern('dash:*').catch(() => {});
+    delCachePattern('alerts:*').catch(() => {});
+
     return res.status(200).json({
       success: true,
       message: 'Medicine updated successfully',
@@ -357,6 +369,11 @@ const deleteMedicine = async (req, res) => {
     // Soft delete / deactivate
     medicine.status = 'inactive';
     await medicine.save();
+
+    // Invalidate Redis caches asynchronously
+    delCachePattern('meds:*').catch(() => {});
+    delCachePattern('dash:*').catch(() => {});
+    delCachePattern('alerts:*').catch(() => {});
 
     return res.status(200).json({
       success: true,

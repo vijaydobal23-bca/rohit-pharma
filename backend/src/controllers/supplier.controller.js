@@ -1,8 +1,9 @@
 const Supplier = require('../models/supplier.model');
+const { delCachePattern } = require('../config/redis');
 
 const getAllSuppliers = async (req, res) => {
   try {
-    const suppliers = await Supplier.find().sort({ name: 1 });
+    const suppliers = await Supplier.find().sort({ name: 1 }).lean();
     return res.status(200).json({
       success: true,
       data: suppliers,
@@ -34,6 +35,8 @@ const createSupplier = async (req, res) => {
       taxNumber: taxNumber?.trim() || '',
     });
 
+    await delCachePattern('suppliers:*');
+
     return res.status(201).json({
       success: true,
       message: 'Supplier created successfully',
@@ -54,6 +57,9 @@ const updateSupplier = async (req, res) => {
     if (!supplier) {
       return res.status(404).json({ success: false, message: 'Supplier not found' });
     }
+
+    await delCachePattern('suppliers:*');
+
     return res.status(200).json({
       success: true,
       message: 'Supplier updated successfully',
@@ -68,6 +74,7 @@ const deleteSupplier = async (req, res) => {
   try {
     const { id } = req.params;
     await Supplier.findByIdAndUpdate(id, { status: 'inactive' });
+    await delCachePattern('suppliers:*');
     return res.status(200).json({
       success: true,
       message: 'Supplier deactivated successfully',
